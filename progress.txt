@@ -1,0 +1,32 @@
+StickyNotes Design Audit — Progress Tracker
+
+Phase 0 — Documents
+[x] DESIGN_SYSTEM.md
+[x] FRONTEND_GUIDELINES.md
+[x] APP_FLOW.md
+[x] PRD.md
+[x] TECH_STACK.md
+[x] progress.txt
+[x] LESSONS.md
+
+Phase 1 — Critical
+[x] 1. Reduce sidebar width (160px → 140px)
+[x] 2. Create toolbar button hierarchy
+[x] 3. Reduce format bar density
+[x] 4. Replace SVG trash icon with ASCII "del"
+[x] 5. Connect Manager to design system
+[x] 11. Fix toolbar spacing asymmetry
+
+Phase 2 — Refinement
+[x] 6. Consolidate typography scale
+[x] 7. Give editor more breathing room
+[x] 8. Unify destructive red color
+[x] 9. Consolidate border-radius
+[x] 10. Improve Manager hover state
+
+Phase 3 — Polish
+[x] 12. Add exit animations
+[x] 13. Terminal-flavored empty states
+[x] 14. Unify scrollbar width
+[x] 15. Add tooltip shadows
+[x] 16. Elevate Manager "New Note" as primary action

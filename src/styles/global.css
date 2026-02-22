@@ -1,0 +1,910 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #0a0a0a;
+  font-family: 'Geist Mono Variable', monospace;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+}
+
+/* Note window container — hard edges, no softness */
+.note-window {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--note-fg-12);
+}
+
+/* Theme transition — gated behind data-ready to prevent initial flash */
+.note-window[data-ready] {
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.note-window[data-ready] .note-editor {
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* Note body: sidebar + editor horizontal layout */
+.note-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Loading state — cryptic, minimal */
+.note-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--note-bg, rgba(30, 30, 30, 0.95));
+  color: var(--note-fg, rgba(160, 160, 160, 0.5));
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: lowercase;
+  border-radius: 0;
+}
+
+/* Toolbar — mechanical, exposed structure */
+.note-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 36px;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--note-fg-12);
+  position: relative;
+  z-index: 101;
+  overflow: hidden;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-btn {
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 3px 8px;
+  opacity: 0.4;
+  transition: opacity 0.08s linear, border-color 0.08s linear;
+  border-radius: 0;
+  text-transform: lowercase;
+  letter-spacing: 0.5px;
+}
+
+.toolbar-btn:hover {
+  opacity: 1;
+  border-color: var(--note-fg-15);
+}
+
+.toolbar-btn:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+  opacity: 1;
+}
+
+.toolbar-btn-active {
+  opacity: 1 !important;
+  border-color: var(--note-fg-20);
+  background: var(--note-fg-08);
+}
+
+.toolbar-btn-close {
+  opacity: 0.5;
+}
+
+.toolbar-btn-util {
+  opacity: 0.3;
+}
+
+/* Editor wrapper */
+.note-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Format bar — industrial control strip */
+.format-bar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 12px;
+  max-height: 36px;
+  border-bottom: 1px solid var(--note-fg-12);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  overflow: hidden;
+  opacity: 1;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.fmt-btn {
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  opacity: 0.35;
+  transition: opacity 0.08s linear, border-color 0.08s linear;
+  border-radius: 0;
+}
+
+.fmt-btn:hover {
+  opacity: 1;
+  border-color: var(--note-fg-15);
+}
+
+.fmt-btn:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+  opacity: 1;
+}
+
+.fmt-btn.fmt-active {
+  opacity: 1;
+  border-color: var(--note-fg-20);
+  background: var(--note-fg-08);
+}
+
+.fmt-delete-btn {
+  margin-left: auto;
+  opacity: 0.25;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+}
+
+.fmt-delete-btn:hover {
+  opacity: 1;
+  color: #ff4444 !important;
+  border-color: rgba(255, 68, 68, 0.3);
+  background: rgba(255, 68, 68, 0.08);
+}
+
+.fmt-btn-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.fmt-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--overlay-bg);
+  color: var(--note-fg-50);
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 50;
+  border: 1px solid var(--note-fg-15);
+  box-shadow: 2px 2px 0 var(--note-bg-80);
+  letter-spacing: 0.5px;
+  text-transform: lowercase;
+  animation: snapIn 0.06s linear;
+}
+
+.fmt-tooltip-key {
+  color: var(--note-fg-30);
+  margin-left: 4px;
+}
+
+.fmt-sep {
+  opacity: 0.2;
+  font-size: 12px;
+  padding: 0 4px;
+  user-select: none;
+}
+
+/* EditorContent wrapper — must fill remaining space for scroll to work */
+.note-editor > div:has(> .tiptap) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Tiptap editor content — the writing surface */
+.note-editor .tiptap {
+  flex: 1;
+  overflow-y: auto;
+  outline: none;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 0 12px 20px;
+  caret-color: currentColor;
+}
+
+/* Pinned header — first child sticks, border spans full width */
+.note-editor .tiptap > :first-child {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--note-bg);
+  padding: 12px 12px 6px;
+  margin: 0 -12px;
+  border-bottom: 1px solid var(--note-fg-12);
+}
+
+.note-editor .tiptap p {
+  margin: 0 0 0.3em;
+}
+
+.note-editor .tiptap h1 {
+  font-size: 1.3em;
+  margin: 0.6em 0 0.2em;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  text-transform: uppercase;
+}
+
+.note-editor .tiptap h2 {
+  font-size: 1.05em;
+  margin: 0.5em 0 0.15em;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.note-editor .tiptap h3 {
+  font-size: 0.9em;
+  margin: 0.4em 0 0.1em;
+  font-weight: 700;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.note-editor .tiptap ul,
+.note-editor .tiptap ol {
+  padding-left: 1.4em;
+  margin: 0.2em 0;
+}
+
+.note-editor .tiptap li {
+  margin: 0.1em 0;
+}
+
+.note-editor .tiptap li p {
+  margin: 0;
+}
+
+.note-editor .tiptap blockquote {
+  border-left: 3px solid currentColor;
+  opacity: 0.7;
+  padding-left: 1em;
+  margin: 0.3em 0;
+}
+
+.note-editor .tiptap code {
+  background: var(--note-fg-10);
+  border: 1px solid var(--note-fg-08);
+  border-radius: 0;
+  padding: 0.05em 0.35em;
+  font-size: 0.9em;
+}
+
+.note-editor .tiptap pre {
+  background: var(--note-bg-80);
+  border: 1px solid var(--note-fg-08);
+  border-radius: 0;
+  padding: 0.6em 0.8em;
+  margin: 0.4em 0;
+  overflow-x: auto;
+}
+
+.note-editor .tiptap pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* Images — raw, full-bleed within content */
+.note-editor .tiptap img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.5em 0;
+  border: 1px solid var(--note-fg-12);
+  image-rendering: auto;
+}
+
+/* Placeholder — understated */
+.note-editor .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  opacity: 0.25;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Scrollbar — ghost until hover */
+.note-editor .tiptap::-webkit-scrollbar {
+  width: 3px;
+}
+
+.note-editor .tiptap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.note-editor .tiptap::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.note-editor .tiptap:hover::-webkit-scrollbar-thumb {
+  background: var(--note-fg-15);
+}
+
+.note-editor .tiptap::-webkit-scrollbar-thumb:hover {
+  background: var(--note-fg-30);
+}
+
+/* Resize handles */
+.resize-n, .resize-s, .resize-e, .resize-w,
+.resize-ne, .resize-nw, .resize-se, .resize-sw {
+  position: absolute;
+  z-index: 100;
+}
+
+.resize-n {
+  top: 0; left: 6px; right: 6px; height: 4px;
+  cursor: n-resize;
+}
+
+.resize-s {
+  bottom: 0; left: 6px; right: 6px; height: 4px;
+  cursor: s-resize;
+}
+
+.resize-e {
+  right: 0; top: 6px; bottom: 6px; width: 4px;
+  cursor: e-resize;
+}
+
+.resize-w {
+  left: 0; top: 6px; bottom: 6px; width: 4px;
+  cursor: w-resize;
+}
+
+.resize-ne {
+  top: 0; right: 0; width: 8px; height: 8px;
+  cursor: ne-resize;
+}
+
+.resize-nw {
+  top: 0; left: 0; width: 8px; height: 8px;
+  cursor: nw-resize;
+}
+
+.resize-se {
+  bottom: 0; right: 0; width: 8px; height: 8px;
+  cursor: se-resize;
+}
+
+.resize-sw {
+  bottom: 0; left: 0; width: 8px; height: 8px;
+  cursor: sw-resize;
+}
+
+/* Theme picker — sharp panel, offset shadow */
+.theme-picker {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  background: var(--overlay-bg);
+  border: 1px solid var(--note-fg-15);
+  border-radius: 0;
+  padding: 12px;
+  z-index: 200;
+  width: 220px;
+  max-width: calc(100% - 16px);
+  box-shadow: 3px 3px 0 var(--note-bg-80);
+  animation: snapIn 0.08s linear;
+  transform-origin: top right;
+}
+
+.theme-picker.closing {
+  animation: snapOut 0.06s linear forwards;
+}
+
+.theme-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 10px;
+  color: var(--note-fg-50);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.theme-picker-close {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--note-fg-40);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 1px 4px;
+  border-radius: 0;
+}
+
+.theme-picker-close:hover {
+  color: var(--note-fg);
+  border-color: var(--note-fg-15);
+}
+
+.theme-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.theme-presets::-webkit-scrollbar {
+  width: 3px;
+}
+
+.theme-presets::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.theme-presets::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.theme-presets:hover::-webkit-scrollbar-thumb {
+  background: var(--note-fg-15);
+}
+
+.theme-presets::-webkit-scrollbar-thumb:hover {
+  background: var(--note-fg-30);
+}
+
+.theme-preset {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--note-fg-50);
+  text-align: left;
+  letter-spacing: 0.3px;
+}
+
+.theme-preset:hover {
+  background: var(--note-fg-08);
+  border-color: var(--note-fg-12);
+}
+
+.theme-preset.active {
+  border-color: var(--note-fg-25);
+  background: var(--note-fg-08);
+}
+
+.theme-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: bold;
+  flex-shrink: 0;
+  border: 1px solid var(--note-fg-08);
+}
+
+.theme-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-custom {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--note-fg-12);
+}
+
+.theme-custom label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--note-fg-30);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.theme-custom input {
+  width: 72px;
+  background: var(--note-fg-05);
+  border: 1px solid var(--note-fg-15);
+  border-radius: 0;
+  color: var(--note-fg-70);
+  font-size: 12px;
+  padding: 4px 6px;
+  outline: none;
+}
+
+.theme-custom input:focus {
+  border-color: var(--note-fg-40);
+}
+
+.theme-actions {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-apply {
+  background: var(--note-fg-10);
+  border: 1px solid var(--note-fg-20);
+  border-radius: 0;
+  color: var(--note-fg-70);
+  font-size: 11px;
+  padding: 4px 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.theme-apply:hover:not(:disabled) {
+  background: var(--note-fg-15);
+  border-color: var(--note-fg-30);
+}
+
+.theme-apply:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+}
+
+.theme-apply:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.theme-error {
+  font-size: 10px;
+  color: #ff6b6b;
+  letter-spacing: 0.5px;
+}
+
+/* Context menu — hard shadow, no radius */
+.context-menu {
+  position: fixed;
+  background: var(--overlay-bg);
+  border: 1px solid var(--note-fg-15);
+  border-radius: 0;
+  padding: 4px 0;
+  z-index: 300;
+  min-width: 180px;
+  box-shadow: 3px 3px 0 var(--note-bg-80);
+  font-size: 13px;
+  animation: snapIn 0.06s linear;
+  transform-origin: top left;
+}
+
+.context-menu.closing {
+  animation: snapOut 0.06s linear forwards;
+}
+
+.context-menu-section {
+  padding: 6px 14px;
+  font-size: 10px;
+  color: var(--note-fg-30);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  background: none;
+  border: none;
+  color: var(--note-fg-70);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  white-space: pre;
+  letter-spacing: 0.3px;
+}
+
+.context-menu-item:hover {
+  background: var(--note-fg-10);
+}
+
+.context-menu-item:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+}
+
+.context-menu-item.active {
+  color: var(--note-fg);
+}
+
+.context-menu-item.delete {
+  color: #ff4444;
+}
+
+.context-menu-item.delete:hover {
+  background: rgba(255, 68, 68, 0.1);
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--note-fg-10);
+  margin: 4px 0;
+}
+
+/* Notes list sidebar — vertical strip */
+.notes-list {
+  width: 160px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--note-fg-12);
+  overflow: hidden;
+  animation: slideIn 0.1s linear;
+}
+
+.notes-list.closing {
+  animation: slideOut 0.08s linear forwards;
+}
+
+.notes-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-size: 10px;
+  color: var(--note-fg-30);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--note-fg-12);
+}
+
+.notes-list-add {
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+  opacity: 0.4;
+  transition: opacity 0.08s linear;
+  line-height: 1;
+  border-radius: 0;
+}
+
+.notes-list-add:hover {
+  opacity: 1;
+  border-color: var(--note-fg-15);
+}
+
+.notes-list-add:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+  opacity: 1;
+}
+
+.notes-list-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+
+.notes-list-items::-webkit-scrollbar {
+  width: 3px;
+}
+
+.notes-list-items::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notes-list-items::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.notes-list-items:hover::-webkit-scrollbar-thumb {
+  background: var(--note-fg-15);
+}
+
+.notes-list-items::-webkit-scrollbar-thumb:hover {
+  background: var(--note-fg-30);
+}
+
+.notes-list-item {
+  padding: 7px 12px;
+  cursor: pointer;
+  position: relative;
+  border-left: 2px solid transparent;
+  transition: background 0.06s linear, border-color 0.06s linear;
+}
+
+.notes-list-item:hover {
+  background: var(--note-fg-06);
+}
+
+.notes-list-item:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: -1px;
+}
+
+.notes-list-item.active {
+  background: var(--note-fg-08);
+  border-left-color: currentColor;
+}
+
+.notes-list-item-preview {
+  font-size: 12px;
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 16px;
+  letter-spacing: 0.2px;
+}
+
+.notes-list-item.active .notes-list-item-preview {
+  opacity: 1;
+}
+
+.notes-list-item-meta {
+  font-size: 10px;
+  opacity: 0.25;
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+
+.notes-list-item-delete {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: currentColor;
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0;
+  padding: 2px 4px;
+  border-radius: 0;
+  transition: opacity 0.06s linear, color 0.06s linear;
+}
+
+.notes-list-item:hover .notes-list-item-delete {
+  opacity: 0.3;
+}
+
+.notes-list-item-delete:hover {
+  opacity: 0.9 !important;
+  color: #ff4444;
+}
+
+.notes-list-item-delete:focus-visible {
+  opacity: 0.9;
+  outline: 1px solid #ff4444;
+  outline-offset: -1px;
+}
+
+/* Notes list empty state */
+.notes-list-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 12px;
+  font-size: 11px;
+  opacity: 0.25;
+  letter-spacing: 1px;
+}
+
+/* Notes list keyboard hint */
+.notes-list-hint {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  font-size: 10px;
+  opacity: 0.2;
+  letter-spacing: 1px;
+  text-align: center;
+  border-top: 1px solid var(--note-fg-12);
+}
+
+/* Inline delete confirmation */
+.confirm-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #ff4444;
+  border-bottom: 1px solid var(--note-fg-12);
+  animation: snapIn 0.06s linear;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.notes-list-item-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #ff4444;
+  padding: 4px 0;
+  animation: snapIn 0.06s linear;
+  letter-spacing: 0.5px;
+}
+
+.confirm-key {
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+/* Animations — fast, mechanical, no ease */
+@keyframes snapIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes snapOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-6px); }
+}

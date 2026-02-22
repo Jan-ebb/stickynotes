@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        run: npx tauri build
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Find DMG
+        id: dmg
+        run: |
+          DMG=$(ls src-tauri/target/release/bundle/dmg/*.dmg)
+          echo "PATH=$DMG" >> "$GITHUB_OUTPUT"
+          echo "NAME=$(basename $DMG)" >> "$GITHUB_OUTPUT"
+
+      - name: Compute SHA256
+        id: sha
+        run: echo "SHA256=$(shasum -a 256 ${{ steps.dmg.outputs.PATH }} | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.dmg.outputs.PATH }}
+          generate_release_notes: true
+          body: |
+            ## Install via Homebrew
+
+            ```
+            brew tap Jan-ebb/stickynotes
+            brew install --cask stickynotes
+            ```
+
+            **SHA256:** `${{ steps.sha.outputs.SHA256 }}`
+
+      - name: Update Homebrew Cask formula
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+        if: env.TAP_TOKEN != ''
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          SHA256="${{ steps.sha.outputs.SHA256 }}"
+          DMG_NAME="${{ steps.dmg.outputs.NAME }}"
+
+          git clone https://x-access-token:${TAP_TOKEN}@github.com/Jan-ebb/homebrew-stickynotes.git tap
+          mkdir -p tap/Casks
+
+          cat > tap/Casks/stickynotes.rb << FORMULA
+          cask "stickynotes" do
+            version "${VERSION}"
+            sha256 "${SHA256}"
+
+            url "https://github.com/Jan-ebb/stickynotes/releases/download/v#{version}/${DMG_NAME}"
+            name "StickyNotes"
+            desc "Floating sticky notes with terminal aesthetic"
+            homepage "https://github.com/Jan-ebb/stickynotes"
+
+            app "StickyNotes.app"
+          end
+          FORMULA
+
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/stickynotes.rb
+          git commit -m "Update stickynotes to ${VERSION}"
+          git push

@@ -55,44 +55,13 @@ jobs:
           files: ${{ steps.dmg.outputs.PATH }}
           generate_release_notes: true
           body: |
-            ## Install via Homebrew
+            ## Install
 
+            ```bash
+            curl -sL https://github.com/Jan-ebb/stickynotes/releases/download/${{ github.ref_name }}/${{ steps.dmg.outputs.NAME }} -o StickyNotes.dmg
+            open StickyNotes.dmg
             ```
-            brew tap Jan-ebb/stickynotes
-            brew install --cask stickynotes
-            ```
+
+            Or download the `.dmg` below and drag StickyNotes to Applications.
 
             **SHA256:** `${{ steps.sha.outputs.SHA256 }}`
-
-      - name: Update Homebrew Cask formula
-        env:
-          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
-        if: env.TAP_TOKEN != ''
-        run: |
-          VERSION="${{ steps.version.outputs.VERSION }}"
-          SHA256="${{ steps.sha.outputs.SHA256 }}"
-          DMG_NAME="${{ steps.dmg.outputs.NAME }}"
-
-          git clone https://x-access-token:${TAP_TOKEN}@github.com/Jan-ebb/homebrew-stickynotes.git tap
-          mkdir -p tap/Casks
-
-          cat > tap/Casks/stickynotes.rb << FORMULA
-          cask "stickynotes" do
-            version "${VERSION}"
-            sha256 "${SHA256}"
-
-            url "https://github.com/Jan-ebb/stickynotes/releases/download/v#{version}/${DMG_NAME}"
-            name "StickyNotes"
-            desc "Floating sticky notes with terminal aesthetic"
-            homepage "https://github.com/Jan-ebb/stickynotes"
-
-            app "StickyNotes.app"
-          end
-          FORMULA
-
-          cd tap
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Casks/stickynotes.rb
-          git commit -m "Update stickynotes to ${VERSION}"
-          git push

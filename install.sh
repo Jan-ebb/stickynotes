@@ -35,10 +35,16 @@ echo "Downloading $(basename "$DMG_URL")..."
 curl -fL "$DMG_URL" -o "$TMP_DMG"
 
 echo "Mounting..."
-MOUNT_POINT=$(hdiutil attach "$TMP_DMG" -nobrowse -quiet | grep '/Volumes/' | awk -F'\t' '{print $NF}')
+ATTACH_OUTPUT=$(hdiutil attach "$TMP_DMG" -nobrowse 2>&1) || {
+  echo "Error: failed to mount DMG." >&2
+  echo "$ATTACH_OUTPUT" >&2
+  exit 1
+}
+MOUNT_POINT=$(echo "$ATTACH_OUTPUT" | grep '/Volumes/' | sed 's/.*\/Volumes/\/Volumes/' | head -1)
 
 if [ -z "$MOUNT_POINT" ] || [ ! -d "$MOUNT_POINT/$APP_NAME" ]; then
-  echo "Error: failed to mount DMG or app not found inside." >&2
+  echo "Error: app not found in mounted DMG." >&2
+  echo "Mount output: $ATTACH_OUTPUT" >&2
   exit 1
 fi
 

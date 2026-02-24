@@ -1,0 +1,54 @@
+#!/bin/bash
+set -euo pipefail
+
+REPO="Jan-ebb/stickynotes"
+APP_NAME="StickyNotes.app"
+INSTALL_DIR="/Applications"
+TMP_DMG=""
+MOUNT_POINT=""
+
+cleanup() {
+  if [ -n "$MOUNT_POINT" ] && [ -d "$MOUNT_POINT" ]; then
+    hdiutil detach "$MOUNT_POINT" -quiet 2>/dev/null || true
+  fi
+  if [ -n "$TMP_DMG" ] && [ -f "$TMP_DMG" ]; then
+    rm -f "$TMP_DMG"
+  fi
+}
+trap cleanup EXIT
+
+echo "Fetching latest release..."
+DMG_URL=$(curl -sfL "https://api.github.com/repos/${REPO}/releases/latest" \
+  | grep -o '"browser_download_url":\s*"[^"]*\.dmg"' \
+  | head -1 \
+  | cut -d'"' -f4)
+
+if [ -z "$DMG_URL" ]; then
+  echo "Error: could not find a DMG in the latest release." >&2
+  echo "Check https://github.com/${REPO}/releases" >&2
+  exit 1
+fi
+
+TMP_DMG=$(mktemp /tmp/StickyNotes-XXXXXX.dmg)
+
+echo "Downloading $(basename "$DMG_URL")..."
+curl -fL "$DMG_URL" -o "$TMP_DMG"
+
+echo "Mounting..."
+MOUNT_POINT=$(hdiutil attach "$TMP_DMG" -nobrowse -quiet | grep '/Volumes/' | awk -F'\t' '{print $NF}')
+
+if [ -z "$MOUNT_POINT" ] || [ ! -d "$MOUNT_POINT/$APP_NAME" ]; then
+  echo "Error: failed to mount DMG or app not found inside." >&2
+  exit 1
+fi
+
+echo "Installing to ${INSTALL_DIR}..."
+rm -rf "${INSTALL_DIR}/${APP_NAME}"
+cp -R "${MOUNT_POINT}/${APP_NAME}" "${INSTALL_DIR}/"
+
+echo "Removing quarantine flag..."
+xattr -cr "${INSTALL_DIR}/${APP_NAME}"
+
+echo ""
+echo "StickyNotes installed to ${INSTALL_DIR}/${APP_NAME}"
+echo "Open it from Applications or run: open -a StickyNotes"

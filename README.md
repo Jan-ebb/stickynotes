@@ -4,16 +4,17 @@ Floating sticky notes with a terminal aesthetic. Built with Tauri, React, and Ty
 
 ## Install (macOS)
 
-Download the latest `.dmg` from [Releases](https://github.com/Jan-ebb/stickynotes/releases), or:
-
 ```bash
-curl -sL $(curl -s https://api.github.com/repos/Jan-ebb/stickynotes/releases/latest | grep browser_download_url | cut -d '"' -f 4) -o StickyNotes.dmg
-open StickyNotes.dmg
+curl -sL https://raw.githubusercontent.com/Jan-ebb/stickynotes/main/install.sh | bash
 ```
 
-Drag StickyNotes to Applications.
+This downloads the latest release, installs to /Applications, and handles macOS Gatekeeper.
 
-> **Note:** Since the app isn't code-signed, macOS may show an "unidentified developer" warning. Right-click the app > Open to bypass it.
+Alternatively, download the `.dmg` manually from [Releases](https://github.com/Jan-ebb/stickynotes/releases). Since the app isn't code-signed, you'll need to strip the quarantine flag after dragging to Applications:
+
+```bash
+xattr -cr /Applications/StickyNotes.app
+```
 
 ## Development
 

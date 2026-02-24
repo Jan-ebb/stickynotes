@@ -58,10 +58,13 @@ jobs:
             ## Install
 
             ```bash
-            curl -sL https://github.com/Jan-ebb/stickynotes/releases/download/${{ github.ref_name }}/${{ steps.dmg.outputs.NAME }} -o StickyNotes.dmg
-            open StickyNotes.dmg
+            curl -sL https://raw.githubusercontent.com/Jan-ebb/stickynotes/main/install.sh | bash
             ```
 
-            Or download the `.dmg` below and drag StickyNotes to Applications.
+            Or download the `.dmg` below manually. Since the app isn't code-signed, strip the quarantine flag after dragging to Applications:
+
+            ```bash
+            xattr -cr /Applications/StickyNotes.app
+            ```
 
             **SHA256:** `${{ steps.sha.outputs.SHA256 }}`

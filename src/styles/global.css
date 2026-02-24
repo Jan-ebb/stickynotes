@@ -578,44 +578,38 @@ button, input, textarea, select {
   border-color: var(--note-fg-40);
 }
 
-.theme-actions {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+
+
+.theme-default-action {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--note-fg-12);
 }
 
-.theme-apply {
+.theme-set-default {
   background: var(--note-fg-10);
-  border: 1px solid var(--note-fg-20);
+  border: 1px solid var(--note-fg-25);
   border-radius: 0;
-  color: var(--note-fg-70);
+  color: var(--note-fg-80);
   font-size: 11px;
-  padding: 4px 10px;
-  text-transform: uppercase;
+  padding: 6px 10px;
+  text-transform: lowercase;
   letter-spacing: 1px;
   cursor: pointer;
+  width: 100%;
+  font-weight: 700;
 }
 
-.theme-apply:hover:not(:disabled) {
+.theme-set-default:hover:not(:disabled) {
   background: var(--note-fg-15);
-  border-color: var(--note-fg-30);
+  border-color: var(--note-fg-40);
+  color: var(--note-fg);
 }
 
-.theme-apply:focus-visible {
-  outline: 1px solid currentColor;
-  outline-offset: -1px;
-}
-
-.theme-apply:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.theme-error {
-  font-size: 10px;
-  color: #ff6b6b;
-  letter-spacing: 0.5px;
+.theme-set-default:disabled {
+  opacity: 0.5;
+  cursor: default;
+  font-weight: 400;
 }
 
 /* Context menu — hard shadow, no radius */

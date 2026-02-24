@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { NOTE_THEMES } from "../lib/constants";
 import { normalizeHexColor } from "../lib/colors";
-import { setDefaultTheme } from "../lib/preferences";
+import { setDefaultTheme, getDefaultTheme } from "../lib/preferences";
 
 interface Props {
   currentBg: string;
@@ -14,6 +14,8 @@ interface Props {
 export function ThemePicker({ currentBg, currentFg, onSelect, onClose, closing }: Props) {
   const [customBg, setCustomBg] = useState(currentBg);
   const [customFg, setCustomFg] = useState(currentFg);
+  const [defaultSaved, setDefaultSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -40,17 +42,30 @@ export function ThemePicker({ currentBg, currentFg, onSelect, onClose, closing }
     };
   }, [onClose]);
 
-  const normalizedBg = normalizeHexColor(customBg);
-  const normalizedFg = normalizeHexColor(customFg);
-  const canApply = Boolean(normalizedBg && normalizedFg);
+  const handleSetDefault = useCallback(() => {
+    setDefaultTheme(currentBg, currentFg);
+    setDefaultSaved(true);
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setDefaultSaved(false), 1500);
+  }, [currentBg, currentFg]);
 
-  const handleApply = () => {
-    if (!normalizedBg || !normalizedFg) {
-      return;
+  useEffect(() => {
+    return () => {
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+    };
+  }, []);
+
+  const storedDefault = getDefaultTheme();
+  const isCurrentDefault = storedDefault?.bg === currentBg && storedDefault?.fg === currentFg;
+
+  // Apply custom colors live as the user types valid hex values
+  useEffect(() => {
+    const bg = normalizeHexColor(customBg);
+    const fg = normalizeHexColor(customFg);
+    if (bg && fg && (bg !== currentBg || fg !== currentFg)) {
+      onSelect(bg, fg);
     }
-    setDefaultTheme(normalizedBg, normalizedFg);
-    onSelect(normalizedBg, normalizedFg);
-  };
+  }, [customBg, customFg]);
 
   return (
     <div
@@ -78,7 +93,7 @@ export function ThemePicker({ currentBg, currentFg, onSelect, onClose, closing }
             className={`theme-preset ${
               currentBg === theme.bg && currentFg === theme.fg ? "active" : ""
             }`}
-            onClick={() => { setDefaultTheme(theme.bg, theme.fg); onSelect(theme.bg, theme.fg); }}
+            onClick={() => onSelect(theme.bg, theme.fg)}
             title={theme.name}
             type="button"
           >
@@ -116,16 +131,15 @@ export function ThemePicker({ currentBg, currentFg, onSelect, onClose, closing }
           />
         </label>
       </div>
-      <div className="theme-actions">
+      <div className="theme-default-action">
         <button
-          className="theme-apply"
-          onClick={handleApply}
-          disabled={!canApply}
+          className="theme-set-default"
+          onClick={handleSetDefault}
+          disabled={isCurrentDefault && !defaultSaved}
           type="button"
         >
-          apply
+          {defaultSaved ? "✓ saved" : isCurrentDefault ? "is default" : "set as default"}
         </button>
-        {!canApply && <span className="theme-error">Use #RGB or #RRGGBB</span>}
       </div>
     </div>
   );

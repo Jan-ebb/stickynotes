@@ -18,13 +18,22 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Fetching latest release..."
+# Try the latest release first, then fall back to scanning recent releases
+# in case the newest release has no DMG asset yet.
 DMG_URL=$(curl -sfL "https://api.github.com/repos/${REPO}/releases/latest" \
   | grep -o '"browser_download_url":\s*"[^"]*\.dmg"' \
   | head -1 \
   | cut -d'"' -f4)
 
 if [ -z "$DMG_URL" ]; then
-  echo "Error: could not find a DMG in the latest release." >&2
+  DMG_URL=$(curl -sfL "https://api.github.com/repos/${REPO}/releases?per_page=10" \
+    | grep -o '"browser_download_url":\s*"[^"]*\.dmg"' \
+    | head -1 \
+    | cut -d'"' -f4)
+fi
+
+if [ -z "$DMG_URL" ]; then
+  echo "Error: could not find a DMG in any recent release." >&2
   echo "Check https://github.com/${REPO}/releases" >&2
   exit 1
 fi

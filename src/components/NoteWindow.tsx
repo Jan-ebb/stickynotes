@@ -70,11 +70,19 @@ export function NoteWindow({ noteId: initialNoteId }: Props) {
   );
 
   const handleDeleteNote = useCallback(async (id: string) => {
+    // Capture the list before deletion so we can find the adjacent note
+    const before = await listNotes();
+    before.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const idx = before.findIndex((n) => n.id === id);
+
     await deleteNote(id);
+
     if (currentNoteIdRef.current === id) {
-      const remaining = await listNotes();
+      const remaining = before.filter((n) => n.id !== id);
       if (remaining.length > 0) {
-        setCurrentNoteId(remaining[0].id);
+        // Jump to the next note in the list, or the previous if we deleted the last item
+        const nextIdx = Math.min(idx, remaining.length - 1);
+        setCurrentNoteId(remaining[nextIdx].id);
       } else {
         const fresh = await createNote();
         setCurrentNoteId(fresh.id);

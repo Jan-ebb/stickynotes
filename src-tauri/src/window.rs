@@ -43,6 +43,7 @@ pub fn open_note_window(app: &AppHandle, note: &Note) -> Result<(), String> {
     let window = WebviewWindowBuilder::new(app, &note.id, url)
         .title("Sticky Note")
         .inner_size(note.width, note.height)
+        .min_inner_size(180.0, 120.0)
         .position(note.x, note.y)
         .decorations(false)
         .visible(true)
@@ -95,6 +96,7 @@ pub fn open_note_window_centered(app: &AppHandle, note: &Note) -> Result<(), Str
 
     let window = WebviewWindowBuilder::new(app, &note.id, url)
         .title("Sticky Note")
+        .min_inner_size(180.0, 120.0)
         .decorations(false)
         .visible(false)
         .resizable(true)

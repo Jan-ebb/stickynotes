@@ -108,6 +108,8 @@ export function NoteEditor({ content, fgColor, onChange, onDelete }: Props) {
   );
 }
 
+type FormatBarMode = "normal" | "del-hidden" | "collapsed";
+
 function FormatBar({
   editor,
   fgColor,
@@ -118,6 +120,11 @@ function FormatBar({
   onDelete: () => void;
 }) {
   const [, rerender] = useState(0);
+  const [mode, setMode] = useState<FormatBarMode>("normal");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onTransaction = () => rerender((n) => n + 1);
@@ -125,8 +132,62 @@ function FormatBar({
     return () => { editor.off("transaction", onTransaction); };
   }, [editor]);
 
-  return (
-    <div className="format-bar">
+  // Overflow detection via ResizeObserver
+  useEffect(() => {
+    const bar = barRef.current;
+    const inner = innerRef.current;
+    if (!bar || !inner) return;
+
+    const check = () => {
+      // Reset to normal to measure full content width
+      const barWidth = bar.clientWidth;
+      const innerWidth = inner.scrollWidth;
+      // del button is ~36px; hide it first before full collapse
+      const delBtnWidth = 36;
+
+      if (innerWidth <= barWidth) {
+        setMode("normal");
+      } else if (innerWidth - delBtnWidth <= barWidth) {
+        setMode("del-hidden");
+      } else {
+        setMode("collapsed");
+      }
+    };
+
+    const ro = new ResizeObserver(check);
+    ro.observe(bar);
+    // Also check after a frame to catch initial render
+    const raf = requestAnimationFrame(check);
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  // Close menu on outside click or Escape
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMenuOpen(false);
+      }
+    };
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [menuOpen]);
+
+  const formatButtons = (
+    <>
       <FmtBtn label="B" tooltip="bold" shortcut="Cmd+B" active={editor.isActive("bold")} fgColor={fgColor} onAction={() => editor.chain().focus().toggleBold().run()} />
       <FmtBtn label="I" tooltip="italic" shortcut="Cmd+I" active={editor.isActive("italic")} fgColor={fgColor} onAction={() => editor.chain().focus().toggleItalic().run()} />
       <FmtBtn label="U" tooltip="underline" shortcut="Cmd+U" active={editor.isActive("underline")} fgColor={fgColor} onAction={() => editor.chain().focus().toggleUnderline().run()} />
@@ -140,16 +201,56 @@ function FormatBar({
       <span className="fmt-sep">|</span>
       <FmtBtn label=">" tooltip="blockquote" shortcut="Cmd+Shift+B" active={editor.isActive("blockquote")} fgColor={fgColor} onAction={() => editor.chain().focus().toggleBlockquote().run()} />
       <FmtBtn label="<>" tooltip="inline code" shortcut="Cmd+E" active={editor.isActive("code")} fgColor={fgColor} onAction={() => editor.chain().focus().toggleCode().run()} />
-      <button
-        className="fmt-btn fmt-delete-btn"
-        onClick={onDelete}
-        style={{ color: fgColor }}
-        type="button"
-        aria-label="Delete note"
-        title="Delete note"
-      >
-        del
-      </button>
+    </>
+  );
+
+  const deleteButton = (
+    <button
+      className="fmt-btn fmt-delete-btn"
+      onClick={onDelete}
+      style={{ color: fgColor }}
+      type="button"
+      aria-label="Delete note"
+      title="Delete note"
+    >
+      del
+    </button>
+  );
+
+  return (
+    <div className="format-bar" ref={barRef}>
+      {/* Always-present hidden measurer for overflow detection */}
+      <div className="format-bar-measurer" ref={innerRef} aria-hidden="true">
+        {formatButtons}
+        {deleteButton}
+      </div>
+
+      {mode === "collapsed" ? (
+        <div className="format-bar-overflow-wrap" ref={menuRef}>
+          <button
+            className="fmt-btn fmt-overflow-btn"
+            style={{ color: fgColor }}
+            type="button"
+            aria-label="Formatting options"
+            title="Formatting options"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            ...
+          </button>
+          {menuOpen && (
+            <div className="fmt-overflow-menu">
+              {formatButtons}
+              <span className="fmt-sep">|</span>
+              {deleteButton}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="format-bar-visible">
+          {formatButtons}
+          {mode === "normal" && deleteButton}
+        </div>
+      )}
     </div>
   );
 }
@@ -171,14 +272,36 @@ function FmtBtn({
 }) {
   const [show, setShow] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     return () => {
-      if (timer.current) {
-        clearTimeout(timer.current);
-      }
+      if (timer.current) clearTimeout(timer.current);
     };
   }, []);
+
+  // Reposition tooltip to stay within viewport
+  useEffect(() => {
+    if (!show) return;
+    const tip = tipRef.current;
+    const wrap = wrapRef.current;
+    if (!tip || !wrap) return;
+    const wrapRect = wrap.getBoundingClientRect();
+    const tipWidth = tip.offsetWidth;
+    let left = (wrapRect.width - tipWidth) / 2;
+    const absLeft = wrapRect.left + left;
+    const absRight = absLeft + tipWidth;
+    const pad = 6;
+    if (absLeft < pad) {
+      left = pad - wrapRect.left;
+    } else if (absRight > window.innerWidth - pad) {
+      left = window.innerWidth - pad - tipWidth - wrapRect.left;
+    }
+    tip.style.left = `${left}px`;
+    tip.style.transform = 'none';
+    tip.style.visibility = 'visible';
+  }, [show]);
 
   const handleEnter = () => {
     timer.current = setTimeout(() => setShow(true), 300);
@@ -191,6 +314,7 @@ function FmtBtn({
   return (
     <span
       className="fmt-btn-wrap"
+      ref={wrapRef}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
@@ -203,12 +327,11 @@ function FmtBtn({
         style={{ color: fgColor }}
         type="button"
         aria-label={tooltip}
-        title={`${tooltip} (${shortcut})`}
       >
         {label}
       </button>
       {show && (
-        <span className="fmt-tooltip">
+        <span className="fmt-tooltip" ref={tipRef}>
           {tooltip} <span className="fmt-tooltip-key">{shortcut}</span>
         </span>
       )}

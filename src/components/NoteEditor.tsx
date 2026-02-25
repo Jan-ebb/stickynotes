@@ -1,6 +1,5 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import Image from "@tiptap/extension-image";
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -81,9 +80,7 @@ export function NoteEditor({ content, fgColor, onChange, onDelete }: Props) {
         inline: false,
         allowBase64: false,
       }),
-      Placeholder.configure({
-        placeholder: "_",
-      }),
+
     ],
     content: initialContent.current,
     onUpdate: ({ editor }) => {

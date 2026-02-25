@@ -241,26 +241,28 @@ button, input, textarea, select {
   min-height: 0;
 }
 
-/* Tiptap editor content — the writing surface */
+/* Tiptap editor content — the writing surface.
+   No top padding so the sticky header sits flush against the format bar. */
 .note-editor .tiptap {
   flex: 1;
   overflow-y: auto;
   outline: none;
   font-size: 14px;
   line-height: 1.6;
-  padding: 12px 12px 20px;
+  padding: 0 12px 20px;
   caret-color: currentColor;
 }
 
-/* Pinned header — first child sticks, border spans full width */
+/* Pinned header — first child sticks, border spans full width.
+   Uses line-height instead of flex centering so the caret position
+   stays consistent between empty and non-empty states. */
 .note-editor .tiptap > :first-child {
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--note-bg);
   height: 40px;
-  display: flex;
-  align-items: center;
+  line-height: 40px;
   padding: 0 12px;
   margin: 0 -12px 12px;
   border-bottom: 1px solid var(--note-fg-12);
@@ -349,14 +351,6 @@ button, input, textarea, select {
   image-rendering: auto;
 }
 
-/* Placeholder — understated */
-.note-editor .tiptap p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  opacity: 0.25;
-  pointer-events: none;
-  height: 0;
-}
 
 /* Scrollbar — ghost until hover */
 .note-editor .tiptap::-webkit-scrollbar {
